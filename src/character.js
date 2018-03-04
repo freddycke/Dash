@@ -225,9 +225,9 @@ var Character = cc.Sprite.extend({
 
 
         //switch position when colliding with a wall and not with the ground
-        if (this.collisionMask & CollisionState.LEFT_MID
+        if (this.collisionMask & (CollisionState.LEFT_MID | CollisionState.LEFT_TOP)
             && !(this.collisionMask & CollisionState.RIGHT_BOT)
-            || this.collisionMask & CollisionState.RIGHT_MID
+            || this.collisionMask & (CollisionState.RIGHT_MID | CollisionState.RIGHT_TOP)
             && !(this.collisionMask & CollisionState.LEFT_BOT ))
         {
             this.runSpeed *= -1;
