@@ -3,8 +3,25 @@ var MovementState = {
     RUN: 2,
     JUMP: 3,
     FALL: 4,
-    WALLSLIDE: 5,
+    WALLSLIDE: 5
     };
+
+var CollisionState = {
+    NONE: 0,
+    LEFT_TOP: 1,
+    LEFT_MID: 2,
+    LEFT_BOT: 4,
+    RIGHT_TOP: 8,
+    RIGHT_MID: 16,
+    RIGHT_BOT: 32,
+    LEFT_3: 7,
+    RIGHT_3: 56,
+    LEFT_L: 39,
+    RIGHT_L: 60,
+    LEFT_sL: 38,
+    RIGHT_sL: 52,
+    GROUND: 36
+};
 
 
 var Character = cc.Sprite.extend({
@@ -16,6 +33,8 @@ var Character = cc.Sprite.extend({
     testColor:null,
 
     //collision
+    collisionMask:0,
+
     left_botTile:null, 
     left_midTile:null, 
     left_topTile:null, 
@@ -160,40 +179,32 @@ var Character = cc.Sprite.extend({
         //collision
         this.updateCollision();
 
-        var groundCollision = this.groundCollision();
-        var wallCollision = this.wallCollision();
+        // not catching ground and wall collision null!!! PROBLEM
+        // change to get collision tile with collision mask "id"?
 
-        // not colliding
-        // -> Fall
-        if (!groundCollision && !wallCollision)
+        switch(this.collisionMask) 
         {
-            this.exitRun();
-            this.enterFall();
-            return;
+            // no collision
+            case CollisionState.NONE:
+                this.exitRun();
+                this.enterFall();
+                break;
+            // collision with left wall and ground
+            case CollisionState.LEFT_L:
+            case CollisionState.LEFT_sL:
+                this.x = this.left_midTile.x + this.left_midTile.width;
+                this.exitRun();
+                this.enterIdle();
+                break;
+            // collision with right wall and ground
+            case CollisionState.RIGHT_L:
+            case CollisionState.RIGHT_sL:
+                this.x = this.right_midTile.x - this.width;
+                this.exitRun();
+                this.enterIdle();
+                break;
+            default:
         }
-        //colliding with wall
-        // -> Slide
-
-        //colliding with wall and ground
-        // -> Idle
-        if (groundCollision && wallCollision)
-        {
-            //adjust position
-            //left-right difference
-            if (wallCollision.x > this.x)
-                this.x = wallCollision.x - this.width;
-            else
-                this.x = wallCollision.x + this.width;
-
-            this.exitRun();
-            this.enterIdle();
-            return;
-        }
-
-        //colliding with ground
-        // -> that's fine, keep running
-
-
     },
 
     exitRun:function()
@@ -209,16 +220,15 @@ var Character = cc.Sprite.extend({
         this.jumpDecayStrength = 0;
         this.jumpCharges++;
 
-        // do another collision update? meh
-        var groundCollision = this.groundCollision();
-        var wallCollision = this.wallCollision();
 
-        if (wallCollision && !groundCollision)
+        //switch position when colliding with a wall and not with the ground
+        if (this.collisionMask & CollisionState.LEFT_MID
+            && !(this.collisionMask & CollisionState.RIGHT_BOT)
+            || this.collisionMask & CollisionState.RIGHT_MID
+            && !(this.collisionMask & CollisionState.LEFT_BOT ))
         {
-            //switch movement direction
             this.runSpeed *= -1;
         }
-        
     },
 
     updateJump:function()
@@ -236,53 +246,55 @@ var Character = cc.Sprite.extend({
 
         this.updateCollision();
 
-        var groundCollision = this.groundCollision();
-        var wallCollision = this.wallCollision();
-
-        //colliding with wall
-        // -> continue jump without horizontal movement
-        if (!groundCollision && wallCollision)
+        switch(this.collisionMask) 
         {
-            //adjust position
-            //left-right difference
-            if (wallCollision.x > this.x)
-                this.x = wallCollision.x - this.width;
-            else
-                this.x = wallCollision.x + this.width;
-            return;
+            // no collision
+            case CollisionState.NONE:
+                if ((this.jumpInitialSpeed - this.jumpDecay*this.jumpDecayStrength) < 0)
+                {
+                    this.exitJump();
+                    this.enterFall();
+                }
+                break;
+            // collision with left wall
+            case CollisionState.LEFT_3:
+            case CollisionState.LEFT_TOP:
+            case CollisionState.LEFT_MID:
+            case CollisionState.LEFT_BOT:
+            case CollisionState.LEFT_BOT+CollisionState.LEFT_MID:
+            case CollisionState.LEFT_MID+CollisionState.LEFT_TOP:
+                this.x = this.getCollisionLeftX() + this.level.tileWidth;
+                break;
+            // collision with right wall
+            case CollisionState.RIGHT_3:
+            case CollisionState.RIGHT_TOP:
+            case CollisionState.RIGHT_MID:
+            case CollisionState.RIGHT_BOT:
+            case CollisionState.RIGHT_BOT+CollisionState.RIGHT_MID:
+            case CollisionState.RIGHT_MID+CollisionState.RIGHT_TOP:
+                this.x = this.getCollisionRightX() - this.width;
+                break;
+            // collision with left wall and ground
+            case CollisionState.LEFT_L:
+            case CollisionState.LEFT_sL:
+                this.x = this.left_midTile.x + this.left_midTile.width;
+                this.y = this.left_botTile.y + this.left_botTile.height;
+                this.exitJump();
+                this.enterIdle();
+                break;
+            // collision with right wall and ground
+            case CollisionState.RIGHT_L:
+            case CollisionState.RIGHT_sL:
+                this.x = this.right_midTile.x - this.width;
+                this.y = this.right_botTile.y + this.right_botTile.height;
+                this.exitJump();
+                this.enterIdle();
+                break;
+            // colliding with ground
+
+            default:
+            
         }
-
-        //colliding with wall and ground
-        // -> Idle
-        if (groundCollision && wallCollision)
-        {
-            //adjust position
-            //left-right difference
-            if (wallCollision.x > this.x)
-                this.x = wallCollision.x - this.width;
-            else
-                this.x = wallCollision.x + this.width;
-        
-            this.y = groundCollision.y + groundCollision.height;
-
-            this.exitJump();
-            this.enterIdle();
-            return;
-        }
-
-        //colliding with ground
-        // -> Run
-
-        // not colliding
-        // -> continue Jump or enter Fall
-        //start falling?
-        if ((this.jumpInitialSpeed - this.jumpDecay*this.jumpDecayStrength) < 0)
-        {
-            this.exitJump();
-            this.enterFall();
-        }
-
-        
     },
 
     exitJump:function()
@@ -312,45 +324,55 @@ var Character = cc.Sprite.extend({
         //collision
         this.updateCollision();
 
-        var groundCollision = this.groundCollision();
-        var wallCollision = this.wallCollision();
-
-        //colliding with wall
-        //-> Slide
-        if (!groundCollision && wallCollision)
+        switch(this.collisionMask) 
         {
-            //adjust position
-            //left-right difference
-            if (wallCollision.x > this.x)
-                this.x = wallCollision.x - this.width;
-            else
-                this.x = wallCollision.x + this.width;
-        
-            return;
+            // no collision
+            case CollisionState.NONE:
+                break;
+            // collision with left wall
+            case CollisionState.LEFT_3:
+            case CollisionState.LEFT_TOP:
+            case CollisionState.LEFT_MID:
+            case CollisionState.LEFT_BOT+CollisionState.LEFT_MID:
+            case CollisionState.LEFT_MID+CollisionState.LEFT_TOP:
+                this.x = this.getCollisionLeftX() + this.level.tileWidth;
+                break;
+            // collision with right wall
+            case CollisionState.RIGHT_3:
+            case CollisionState.RIGHT_TOP:
+            case CollisionState.RIGHT_MID:
+            case CollisionState.RIGHT_BOT+CollisionState.RIGHT_MID:
+            case CollisionState.RIGHT_MID+CollisionState.RIGHT_TOP:
+                this.x = this.getCollisionRightX() - this.width;
+                break;
+            // collision with left wall and ground
+            case CollisionState.LEFT_L:
+            case CollisionState.LEFT_sL:
+                this.x = this.left_midTile.x + this.left_midTile.width;
+                this.y = this.left_botTile.y + this.left_botTile.height;
+                this.exitFall();
+                this.enterIdle();
+                break;
+            // collision with right wall and ground
+            case CollisionState.RIGHT_L:
+            case CollisionState.RIGHT_sL:
+                this.x = this.right_midTile.x - this.width;
+                this.y = this.right_botTile.y + this.right_botTile.height;
+                this.exitFall();
+                this.enterIdle();
+                break;
+            // colliding with ground
+            case CollisionState.GROUND:
+            case CollisionState.LEFT_BOT:
+            case CollisionState.RIGHT_BOT:
+                this.y = this.getCollisionGroundY() + this.level.tileHeight;
+                this.exitFall();
+                this.enterRun();
+                break;
+
+            default:
+            
         }
-
-        //colliding with ground
-        //-> Run
-        if (groundCollision && !wallCollision)
-        {
-            //adjust position
-            this.y = groundCollision.y + groundCollision.height;
-        
-            this.exitFall();
-            this.enterRun();
-            return;
-        }
-
-        //colliding with ground and wall
-        //-> Idle
-        if (groundCollision && wallCollision)
-        {
-            this.exitFall();
-            this.enterIdle();
-        }
-
-        // not colliding
-
 
     },
 
@@ -368,6 +390,9 @@ var Character = cc.Sprite.extend({
     //------------------------------------------------ COLLISION -------------------------------------------------------
     updateCollision:function()
     {
+        // clear collision mask
+        this.collisionMask = 0;
+
         // get 6 points for the sprite (only works for character sprite - do it more dynamically!)
         var left_top = new cc.Point(this.x, this.y + this.height);
         var left_mid = new cc.Point(this.x, this.y + this.height/2);
@@ -405,79 +430,56 @@ var Character = cc.Sprite.extend({
         this.right_midTile = this.level.collisionLayer.getTileAt(right_mid.x,right_mid.y);
         this.right_topTile = this.level.collisionLayer.getTileAt(right_top.x,right_top.y);
 
-        
-        //console.log(this.collisionLayer.getProperty("isCollider"));
-    },
-
-    groundCollision:function()
-    {
-        // how to exclude wall collision?
-
-        // return null when both are null
-        if (!this.left_botTile && !this.right_botTile)
-            return null;
-
-        // both not null, return tile closer to character's center
-        // do we have to exclude wall here as well? You should not touch two walls, right?
-        if (this.left_botTile && this.right_botTile)
-        {
-            if (Math.abs(this.left_botTile.x - this.x) < Math.abs(this.right_botTile.x - this.x))
-                return this.left_botTile;
-            else
-                return this.right_botTile;
-        }
-
-        //check right tile
-        if (this.right_botTile)
-        {
-            //exclude wall collision
-            if (this.x < this.right_botTile.x - this.right_botTile.width)
-                return this.right_botTile;
-        }
-
-        //check left tile
+        // fill collision mask
         if (this.left_botTile)
-        {
-            //exclude wall collision
-            if (this.x > this.left_botTile.x + this.left_botTile.width)
-                return this.left_botTile;
-        }
-            
-        //not colliding
-        return null;
+            this.collisionMask += CollisionState.LEFT_BOT;
+        if (this.left_midTile)
+            this.collisionMask += CollisionState.LEFT_MID;
+        if (this.left_topTile)
+            this.collisionMask += CollisionState.LEFT_TOP;
+        if (this.right_botTile)
+            this.collisionMask += CollisionState.RIGHT_BOT;
+        if (this.right_midTile)
+            this.collisionMask += CollisionState.RIGHT_MID;
+        if (this.right_topTile)
+            this.collisionMask += CollisionState.RIGHT_TOP;
+        
+        console.log(this.collisionMask);
     },
 
-    wallCollision:function()
+    getCollisionLeftX:function()
     {
-        // return wall colliding tile with the highest y value
-        // this way we can do the auto climb?
-
-
-        //collidiing left
+        if (this.left_botTile)
+            return this.left_botTile.x;
+        if (this.left_midTile)
+            return this.left_midTile.x;
         if (this.left_topTile)
-            return this.left_topTile;
-        else if (this.left_midTile) 
-            return this.left_midTile;
-        else if (this.left_botTile)
-        {
-            //exclude ground collision
-            if (this.y > this.left_botTile.y + this.left_botTile.height)
-                return this.left_botTile;
-        }
+            return this.left_topTile.x;
+        console.log("this should not happen! getCollisionLeftX has nothing to return")
+        return 0; // <- this should not happen
+    },
 
-        //colliding right
+    getCollisionRightX:function()
+    {
+        if (this.right_botTile)
+            return this.right_botTile.x;
+        if (this.right_midTile)
+            return this.right_midTile.x;
         if (this.right_topTile)
-            return this.right_topTile;
-        else if (this.right_midTile) 
-            return this.right_midTile;
-        else if (this.right_botTile)
-        {
-            //exclude ground collision
-            if (this.y > this.right_botTile.y + this.right_botTile.height)
-                return this.right_botTile;
-        }
+            return this.right_topTile.x;
+        console.log("this should not happen! getCollisionRightX has nothing to return")
+        return 0; // <- this should not happen
+    },
 
-        // not colliding
-        return null;
+    getCollisionGroundY:function()
+    {
+        if (this.right_botTile)
+            return this.right_botTile.y;
+        if (this.left_botTile)
+            return this.left_botTile.y;
+        console.log("this should not happen! getCollisionGroundY has nothing to return")
+        return 0; // <- this should not happen
     }
+
+    
 });
