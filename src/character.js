@@ -51,10 +51,10 @@ var Character = cc.Sprite.extend({
     jumpCharges:0,
     jumpHoldModifier:0.5,
     jumpHold:false,
-    runSpeed:-3,
-
+    
+    //movement
     movementState:MovementState.RUN,
-
+    runSpeed:-3,
 
     ctor:function (sprite, level) 
     {
@@ -128,7 +128,8 @@ var Character = cc.Sprite.extend({
         //console.log("on touch began");
         if (this.jumpCharges < this.jumpChargesMax)
         {
-            this.exitRun();
+            this.exitRun(); // << exit current state instead of run state :( - add a real state machine
+            this.exitFall();
             this.enterJump();
         }
     },
@@ -264,6 +265,11 @@ var Character = cc.Sprite.extend({
             case CollisionState.LEFT_BOT+CollisionState.LEFT_MID:
             case CollisionState.LEFT_MID+CollisionState.LEFT_TOP:
                 this.x = this.getCollisionLeftX() + this.level.tileWidth;
+                if ((this.jumpInitialSpeed - this.jumpDecay*this.jumpDecayStrength) < 0)
+                {
+                    this.exitJump();
+                    this.enterFall();
+                }
                 break;
             // collision with right wall
             case CollisionState.RIGHT_3:
@@ -273,6 +279,11 @@ var Character = cc.Sprite.extend({
             case CollisionState.RIGHT_BOT+CollisionState.RIGHT_MID:
             case CollisionState.RIGHT_MID+CollisionState.RIGHT_TOP:
                 this.x = this.getCollisionRightX() - this.width;
+                if ((this.jumpInitialSpeed - this.jumpDecay*this.jumpDecayStrength) < 0)
+                {
+                    this.exitJump();
+                    this.enterFall();
+                }
                 break;
             // collision with left wall and ground
             case CollisionState.LEFT_L:
