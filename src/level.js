@@ -6,5 +6,6 @@ var Level = cc.TMXTiledMap.extend({
         this._super(t);
 
         this.collisionLayer = this.getLayer("collision");
+
     }
 });

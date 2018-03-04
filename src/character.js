@@ -45,7 +45,7 @@ var Character = cc.Sprite.extend({
         this.testColor = new cc.Color(200,200,200);
 
         //set anchor point
-        //this.setAnchorPoint(0.5,0);
+        this.setAnchorPoint(0,0);
         
         //set level (used for collision)
         this.level = level;
@@ -129,6 +129,9 @@ var Character = cc.Sprite.extend({
     enterIdle:function()
     {
         this.movementState = MovementState.IDLE;
+        this.jumpDecayStrength = 0;
+        this.jumpCharges = 0;
+        this.jumpHold = false;
     },
 
     updateIdle:function()
@@ -145,6 +148,9 @@ var Character = cc.Sprite.extend({
     enterRun:function()
     {
         this.movementState = MovementState.RUN;
+        this.jumpDecayStrength = 0;
+        this.jumpCharges = 0;
+        this.jumpHold = false;
     },
 
     updateRun:function()
@@ -163,18 +169,21 @@ var Character = cc.Sprite.extend({
         {
             this.exitRun();
             this.enterFall();
+            return;
         }
         //colliding with wall
         // -> Slide
 
         //colliding with wall and ground
         // -> Idle
-        else if (groundCollision && wallCollision)
+        if (groundCollision && wallCollision)
         {
             //adjust position
+            this.x = wallCollision.x - this.width;
 
             this.exitRun();
             this.enterIdle();
+            return;
         }
 
         //colliding with ground
@@ -201,6 +210,7 @@ var Character = cc.Sprite.extend({
     {
         this.updateHorizontalMovement();
 
+        // update vertical movement
         this.y += (this.jumpInitialSpeed - this.jumpDecay*this.jumpDecayStrength);
 
         //stronger jump when holding and not falling
@@ -209,15 +219,44 @@ var Character = cc.Sprite.extend({
         else
             this.jumpDecayStrength += this.jumpHoldModifier;
 
-        //Enter fall state
+        this.updateCollision();
+
+        var groundCollision = this.groundCollision();
+        var wallCollision = this.wallCollision();
+
+        //colliding with wall
+        // -> continue jump without horizontal movement
+        if (!groundCollision && wallCollision)
+        {
+            //adjust position
+            this.x = wallCollision.x - this.width;
+            return;
+        }
+
+        //colliding with wall and ground
+        // -> Idle
+        if (groundCollision && wallCollision)
+        {
+            //adjust position
+            this.x = wallCollision.x - this.width;
+
+            this.exitJump();
+            this.enterIdle();
+            return;
+        }
+
+        //colliding with ground
+        // -> Run
+
+        // not colliding
+        // -> continue Jump or enter Fall
+        //start falling?
         if ((this.jumpInitialSpeed - this.jumpDecay*this.jumpDecayStrength) < 0)
         {
             this.exitJump();
             this.enterFall();
         }
-            
 
-        //right place to do the check? I don't think so.
         
     },
 
@@ -259,9 +298,7 @@ var Character = cc.Sprite.extend({
 
     exitFall:function()
     {
-        this.jumpDecayStrength = 0;
-        this.jumpCharges = 0;
-        this.jumpHold = false;
+
     },
 
     //------------------------------------------------ HORIZONTAL MOVEMENT -------------------------------------------------------
@@ -274,12 +311,12 @@ var Character = cc.Sprite.extend({
     updateCollision:function()
     {
         // get 6 points for the sprite (only works for character sprite - do it more dynamically!)
-        var left_top = new cc.Point(this.x - this.width/2, this.y + this.height/2);
-        var left_mid = new cc.Point(this.x - this.width/2, this.y);
-        var left_bot = new cc.Point(this.x - this.width/2, this.y - this.height/2);
-        var right_top = new cc.Point(this.x + this.width/2, this.y + this.height/2);
-        var right_mid = new cc.Point(this.x + this.width/2, this.y);
-        var right_bot = new cc.Point(this.x + this.width/2, this.y - this.height/2);
+        var left_top = new cc.Point(this.x, this.y + this.height);
+        var left_mid = new cc.Point(this.x, this.y + this.height/2);
+        var left_bot = new cc.Point(this.x, this.y);
+        var right_top = new cc.Point(this.x + this.width, this.y + this.height);
+        var right_mid = new cc.Point(this.x + this.width, this.y + this.height/2);
+        var right_bot = new cc.Point(this.x + this.width, this.y);
 
         //position to tile coordinates
         // y coordinates are switched
@@ -316,26 +353,39 @@ var Character = cc.Sprite.extend({
 
     groundCollision:function()
     {
+        // how to exclude wall collision?
+
         // return null when both are null
         if (!this.left_botTile && !this.right_botTile)
             return null;
 
-        // return right when left is null
-        if (!this.left_botTile)
-            return this.right_botTile;
-
-        //return left when right is null
-        if (!this.right_botTile)
-            return this.left_botTile;
-
         // both not null, return tile closer to character's center
-        if (Math.abs(this.left_botTile.x - this.x) < Math.abs(this.right_botTile.x - this.x))
-            return this.left_botTile;
-        else
-            return this.right_botTile;
+        // do we have to exclude wall here as well? You should not touch two walls, right?
+        if (this.left_botTile && this.right_botTile)
+        {
+            if (Math.abs(this.left_botTile.x - this.x) < Math.abs(this.right_botTile.x - this.x))
+                return this.left_botTile;
+            else
+                return this.right_botTile;
+        }
 
-        //should not occur
-        console.log("groundCollision failed");
+        //check right tile
+        if (this.right_botTile)
+        {
+            //exclude wall collision
+            if (this.x < this.right_botTile.x - this.right_botTile.width)
+                return this.right_botTile;
+        }
+
+        //check left tile
+        if (this.left_botTile)
+        {
+            //exclude wall collision
+            if (this.x > this.left_botTile.x + this.left_botTile.width)
+                return this.left_botTile;
+        }
+            
+        //not colliding
         return null;
     },
 
