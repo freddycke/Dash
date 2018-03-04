@@ -104,7 +104,8 @@ var Character = cc.Sprite.extend({
     {
         switch(this.movementState) 
         {
-            case MovementState.STOP:
+            case MovementState.IDLE:
+                this.updateIdle();
                 break;
             case MovementState.RUN:
                 this.updateRun();
@@ -116,6 +117,7 @@ var Character = cc.Sprite.extend({
                 this.updateFall();
                 break;
             case MovementState.WALLSLIDE:
+                this.updateWallSlide();
                 break;
             default:
         }
@@ -301,7 +303,13 @@ var Character = cc.Sprite.extend({
                 this.exitJump();
                 this.enterIdle();
                 break;
-            // colliding with ground
+            // colliding with ceiling
+            case CollisionState.LEFT_TOP + CollisionState.RIGHT_TOP:
+                this.y = this.left_topTile.y - this.height;
+                
+                this.exitJump();
+                this.enterFall();
+                break;
 
             default:
             
@@ -388,6 +396,22 @@ var Character = cc.Sprite.extend({
     },
 
     exitFall:function()
+    {
+
+    },
+
+    //------------------------------------------------ WALLSLIDE -------------------------------------------------------
+    enterWallSlide:function()
+    {
+        this.movementState = MovementState.WALLSLIDE;
+    },
+
+    updateWallSlide:function()
+    {
+
+    },
+
+    exitWallSlide:function()
     {
 
     },
