@@ -208,6 +208,17 @@ var Character = cc.Sprite.extend({
         this.jumpHold = true;
         this.jumpDecayStrength = 0;
         this.jumpCharges++;
+
+        // do another collision update? meh
+        var groundCollision = this.groundCollision();
+        var wallCollision = this.wallCollision();
+
+        if (wallCollision && !groundCollision)
+        {
+            //switch movement direction
+            this.runSpeed *= -1;
+        }
+        
     },
 
     updateJump:function()
