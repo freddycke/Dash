@@ -32,7 +32,7 @@ var Character = cc.Sprite.extend({
     jumpCharges:0,
     jumpHoldModifier:0.5,
     jumpHold:false,
-    runSpeed:3,
+    runSpeed:-3,
 
     movementState:MovementState.RUN,
 
@@ -179,7 +179,11 @@ var Character = cc.Sprite.extend({
         if (groundCollision && wallCollision)
         {
             //adjust position
-            this.x = wallCollision.x - this.width;
+            //left-right difference
+            if (wallCollision.x > this.x)
+                this.x = wallCollision.x - this.width;
+            else
+                this.x = wallCollision.x + this.width;
 
             this.exitRun();
             this.enterIdle();
@@ -229,7 +233,11 @@ var Character = cc.Sprite.extend({
         if (!groundCollision && wallCollision)
         {
             //adjust position
-            this.x = wallCollision.x - this.width;
+            //left-right difference
+            if (wallCollision.x > this.x)
+                this.x = wallCollision.x - this.width;
+            else
+                this.x = wallCollision.x + this.width;
             return;
         }
 
@@ -238,7 +246,13 @@ var Character = cc.Sprite.extend({
         if (groundCollision && wallCollision)
         {
             //adjust position
-            this.x = wallCollision.x - this.width;
+            //left-right difference
+            if (wallCollision.x > this.x)
+                this.x = wallCollision.x - this.width;
+            else
+                this.x = wallCollision.x + this.width;
+        
+            this.y = groundCollision.y + groundCollision.height;
 
             this.exitJump();
             this.enterIdle();
@@ -287,13 +301,46 @@ var Character = cc.Sprite.extend({
         //collision
         this.updateCollision();
 
-        var groundTile = this.groundCollision();
-        if (groundTile)
+        var groundCollision = this.groundCollision();
+        var wallCollision = this.wallCollision();
+
+        //colliding with wall
+        //-> Slide
+        if (!groundCollision && wallCollision)
         {
-            this.y = groundTile.y + groundTile.height;
+            //adjust position
+            //left-right difference
+            if (wallCollision.x > this.x)
+                this.x = wallCollision.x - this.width;
+            else
+                this.x = wallCollision.x + this.width;
+        
+            return;
+        }
+
+        //colliding with ground
+        //-> Run
+        if (groundCollision && !wallCollision)
+        {
+            //adjust position
+            this.y = groundCollision.y + groundCollision.height;
+        
             this.exitFall();
             this.enterRun();
+            return;
         }
+
+        //colliding with ground and wall
+        //-> Idle
+        if (groundCollision && wallCollision)
+        {
+            this.exitFall();
+            this.enterIdle();
+        }
+
+        // not colliding
+
+
     },
 
     exitFall:function()
