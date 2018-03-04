@@ -305,12 +305,26 @@ var Character = cc.Sprite.extend({
                 break;
             // colliding with ceiling
             case CollisionState.LEFT_TOP + CollisionState.RIGHT_TOP:
-                this.y = this.left_topTile.y - this.height;
+            case CollisionState.LEFT_TOP + CollisionState.RIGHT_TOP
+                    + CollisionState.LEFT_MID:
+            case CollisionState.LEFT_TOP + CollisionState.RIGHT_TOP
+                    + CollisionState.RIGHT_MID:
+            case CollisionState.LEFT_TOP + CollisionState.RIGHT_TOP
+                    + CollisionState.LEFT_MID + CollisionState.LEFT_BOT:
+            case CollisionState.LEFT_TOP + CollisionState.RIGHT_TOP
+                    + CollisionState.RIGHT_MID + CollisionState.RIGHT_BOT:
                 
+                // adjust position. For y any top tile is fine
+                this.y = this.left_topTile.y - this.height;
+                // for x we have to differentiate between left and right
+                if (this.left_midTile)
+                    this.x = this.left_midTile.x + this.left_midTile.width;
+                else if (this.right_midTile)
+                    this.x = this.right_midTile.x - this.width;
+
                 this.exitJump();
                 this.enterFall();
                 break;
-
             default:
             
         }
