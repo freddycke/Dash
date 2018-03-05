@@ -493,7 +493,7 @@ var Character = cc.Sprite.extend({
         if (this.right_topTile)
             this.collisionMask += CollisionState.RIGHT_TOP;
         
-        console.log(this.collisionMask);
+        //console.log(this.collisionMask);
     },
 
     getCollisionLeftX:function()

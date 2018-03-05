@@ -9,11 +9,11 @@ var DashGameLayer = cc.Layer.extend({
         var size = cc.winSize;
 
         //map
-        this.level = new Level(res.tilemap_tmx);
+        this.level = new Level(level01);
         this.addChild(this.level);
 
         // character
-        this.character = new Character(res.character_png, this.level);
+        this.character = new Character(character01, this.level);
         this.character.attr({
             x: size.width / 2,
             y: size.height / 2
